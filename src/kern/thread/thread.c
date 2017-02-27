@@ -151,6 +151,8 @@ thread_create(const char *name)
 	thread->t_did_reserve_buffers = false;
 
 	/* If you add to struct thread, be sure to initialize here */
+	//make a semaphore to hold our join status	
+	thread->sem_join = sem_create(name,0);
 
 	return thread;
 }
@@ -285,6 +287,9 @@ thread_destroy(struct thread *thread)
 	}
 	threadlistnode_cleanup(&thread->t_listnode);
 	thread_machdep_cleanup(&thread->t_machdep);
+	
+	//clean the semaphore we created
+	sem_destroy(thread->sem_join);
 
 	/* sheer paranoia */
 	thread->t_wchan_name = "DESTROYED";
@@ -788,6 +793,10 @@ thread_exit(void)
 
 	cur = curthread;
 
+	V(curthread.sem_join);
+
+	
+
 	KASSERT(cur->t_did_reserve_buffers == false);
 
 	/*
@@ -807,6 +816,8 @@ thread_exit(void)
 	thread_switch(S_ZOMBIE, NULL, NULL);
 	panic("braaaaaaaiiiiiiiiiiinssssss\n");
 }
+
+
 
 /*
  * Yield the cpu to another process, but stay runnable.
