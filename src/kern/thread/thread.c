@@ -812,7 +812,7 @@ thread_exit(void)
 
 	cur = curthread;
 
-	V(curthread.sem_join);
+	V(curthread->sem_join);
 
 	
 
