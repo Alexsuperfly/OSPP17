@@ -130,7 +130,7 @@ lock_create(const char *name){
 	    return NULL;
 	}
 
-	spinlock_init(&lock->lk_lock);
+	spinlock_init(lock->lk_lock);
 	lock->lk_holder = NULL;
 	// end add stuff //
 	
@@ -142,7 +142,7 @@ lock_destroy(struct lock *lock){
         KASSERT(lock != NULL);
 
         // begin add stuff //
-	spinlock_cleanup(&lock->lk_lock);
+	spinlock_cleanup(lock->lk_lock);
 	wchan_destroy(lock->lk_wchan);
 	lock->lk_holder = NULL;
 	// end add stuff //
@@ -161,17 +161,17 @@ lock_acquire(struct lock *lock){
 		KASSERT(!curthread->t_in_interrupt);	// thread.c disable interrupts
 		//KASSERT(lock_do_i_hold(lock));		// thread.c
 			
-		spinlock_acquire(&lock->lk_lock);	// atomic
+		spinlock_acquire(lock->lk_lock);	// atomic
 
 		while(lock->lk_holder != NULL)
 		{
-		    spinlock_release(&lock->lk_lock);
+		    spinlock_release(lock->lk_lock);
 		    wchan_sleep(lock->lk_wchan, lock->lk_lock);
 		    // sleep will return here so reacquire lock
-		    spinlock_acquire(&lock->lk_lock);
+		    spinlock_acquire(lock->lk_lock);
 		}
 		lock->lk_holder = curthread;
-		spinlock_release(&lock->lk_lock);
+		spinlock_release(lock->lk_lock);
 			
 		// re-enable interrupts ??
 		// end add stuff //
@@ -192,14 +192,14 @@ lock_release(struct lock *lock){
         // begin add stuff //
 			KASSERT(lock != NULL);
 			KASSERT(!curthread->t_in_interrupt);
-			spinlock_acquire(&lock->lk_lock);
+			spinlock_acquire(lock->lk_lock);
 			
 			if(lock_do_i_hold(lock)
 			{
 			    lock->lk_holder = NULL;
 			    wchan_wakeone(lock->lk_wchan, lock->lk_lock);
 			}
-			spinlock_release(&lock->lk_lock);
+			spinlock_release(lock->lk_lock);
 		
 		
 		// end add stuff //
@@ -267,7 +267,7 @@ cv_destroy(struct cv *cv){
 void
 cv_wait(struct cv *cv, struct lock *lock){
         // begin add stuff //		
-		spinlock_acquire(&lock->lk_lock);	// atomic
+		spinlock_acquire(lock->lk_lock);	// atomic
 			
 		while(lock->lk_holder != NULL)
 		{
