@@ -558,6 +558,25 @@ thread_fork(const char *name,
 	return 0;
 }
 
+int
+thread_join(struct thread *thread){
+
+		KASSERT(curthread != NULL);
+		//KASSERT(thread != NULL);
+		KASSERT(thread != curthread);
+		//KASSERT(thread->sem_join != NULL);
+		
+		
+		P(thread->sem_join);
+		
+		
+	//	while(thread->t_state != S_ZOMBIE){
+	//		curthread->t_state = S_SLEEP;
+	//	}
+		
+	
+}
+
 /*
  * High level, machine-independent context switch code.
  *
