@@ -149,6 +149,11 @@ int thread_fork(const char *name, struct proc *proc,
                 void (*func)(void *, unsigned long),
                 void *data1, unsigned long data2);
 
+int thread_forking(const char *name,
+	    struct proc *proc,
+	    void (*entrypoint)(void *data1, unsigned long data2),
+	    void *data1, unsigned long data2, struct thread **t);
+
 /*
  * Cause the current thread to exit.
  * Interrupts need not be disabled.
