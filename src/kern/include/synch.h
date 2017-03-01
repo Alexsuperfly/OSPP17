@@ -49,7 +49,7 @@ struct lock {
 
 		// begin add stuff //
 		struct wchan *lk_wchan;
-		struct spinlock* lk_lock;
+		struct spinlock lk_lock;
 		struct thread *lk_holder;
 		// end add stuff //
 		
@@ -94,6 +94,7 @@ struct cv {
         char *cv_name;
         // begin add stuff //
 		struct wchan *cv_wchan;
+		struct spinlock cv_lock;
 		// end add stuff //
 };
 

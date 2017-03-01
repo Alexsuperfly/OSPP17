@@ -5,6 +5,7 @@
 #include <thread.h>
 #include <current.h>
 #include <synch.h>
+#include <spl.h>
 
 ////////////////////////////////////////////////////////////
 //
@@ -77,7 +78,7 @@ P(struct semaphore *sem)
 		 *
 		 * Exercise: how would you implement strict FIFO
 		 * ordering?
-		 */
+		 */		
 		wchan_sleep(sem->sem_wchan, &sem->sem_lock);
         }
         KASSERT(sem->sem_count > 0);
@@ -130,7 +131,7 @@ lock_create(const char *name){
 	    return NULL;
 	}
 
-	spinlock_init(lock->lk_lock);
+	spinlock_init(&lock->lk_lock);
 	lock->lk_holder = NULL;
 	// end add stuff //
 	
@@ -142,7 +143,7 @@ lock_destroy(struct lock *lock){
         KASSERT(lock != NULL);
 
         // begin add stuff //
-	spinlock_cleanup(lock->lk_lock);
+	spinlock_cleanup(&lock->lk_lock);
 	wchan_destroy(lock->lk_wchan);
 	lock->lk_holder = NULL;
 	// end add stuff //
@@ -157,24 +158,32 @@ lock_acquire(struct lock *lock){
 	//HANGMAN_WAIT(&curthread->t_hangman, &lock->lk_hangman);
 
         // begin add stuff //		
-		KASSERT(lock != NULL);
-		KASSERT(!curthread->t_in_interrupt);	// thread.c disable interrupts
-		//KASSERT(lock_do_i_hold(lock));		// thread.c
-			
-		spinlock_acquire(lock->lk_lock);	// atomic
+	
+	//turn interrupts off	
+	int spl;
+	spl = splhigh();	
 
-		while(lock->lk_holder != NULL)
-		{
-		    spinlock_release(lock->lk_lock);
-		    wchan_sleep(lock->lk_wchan, lock->lk_lock);
-		    // sleep will return here so reacquire lock
-		    spinlock_acquire(lock->lk_lock);
-		}
-		lock->lk_holder = curthread;
-		spinlock_release(lock->lk_lock);
+	KASSERT(lock != NULL);
+	KASSERT(!curthread->t_in_interrupt);	// thread.c disable interrupts
+	//KASSERT(lock_do_i_hold(lock));		// thread.c
 			
-		// re-enable interrupts ??
-		// end add stuff //
+	spinlock_acquire(&lock->lk_lock);	// atomic
+
+	while(lock->lk_holder != NULL)
+	{
+	    //spinlock_release(&lock->lk_lock);
+	    //kprintf("lock acquires sleep\n");
+	    wchan_sleep(lock->lk_wchan, &lock->lk_lock);
+	    // sleep will return here so reacquire lock
+	    //spinlock_acquire(&lock->lk_lock);
+	}
+	lock->lk_holder = curthread;
+	spinlock_release(&lock->lk_lock);
+			
+	//turn interrupts back on
+	splx(spl);
+	
+	// end add stuff //
 
 		
 		
@@ -190,16 +199,25 @@ lock_release(struct lock *lock){
 	//HANGMAN_RELEASE(&curthread->t_hangman, &lock->lk_hangman);
 
         // begin add stuff //
-			KASSERT(lock != NULL);
-			KASSERT(!curthread->t_in_interrupt);
-			spinlock_acquire(lock->lk_lock);
+	
+	//turn interrupts off	
+	int spl;
+	spl = splhigh();		
+
+	KASSERT(lock != NULL);
+	KASSERT(!curthread->t_in_interrupt);
+	spinlock_acquire(&lock->lk_lock);
 			
-			if(lock_do_i_hold(lock))
-			{
-			    lock->lk_holder = NULL;
-			    wchan_wakeone(lock->lk_wchan, lock->lk_lock);
-			}
-			spinlock_release(lock->lk_lock);
+	if(lock_do_i_hold(lock))
+	{
+	    lock->lk_holder = NULL;
+	    wchan_wakeone(lock->lk_wchan, &lock->lk_lock);
+	}
+	spinlock_release(&lock->lk_lock);
+
+
+	//turn interrupts back on
+	splx(spl);
 		
 		
 		// end add stuff //
@@ -225,7 +243,12 @@ lock_do_i_hold(struct lock *lock){
 ////////////////////////////////////////////////////////////
 struct cv *
 cv_create(const char *name){
-        struct cv *cv;
+        
+	//turn interrupts off	
+	int spl;
+	spl = splhigh();
+	
+	struct cv *cv;
 
         cv = kmalloc(sizeof(*cv));
         if (cv == NULL) {
@@ -247,35 +270,64 @@ cv_create(const char *name){
 			    kfree(cv);
 			    return NULL;
 			}
-		// end add stuff //
 
-        return cv;
+	spinlock_init(&cv->cv_lock);
+		
+
+	//turn interrupts back on
+	splx(spl);        
+
+	// end add stuff //
+
+	return cv;
 }
 ////////////////////////////////////////////////////////////
 void
 cv_destroy(struct cv *cv){
-        KASSERT(cv != NULL);
+	
+	//turn interrupts off	
+	int spl;
+	spl = splhigh();        
+
+	KASSERT(cv != NULL);
 
         // begin add stuff //
 	wchan_destroy(cv->cv_wchan);
+	spinlock_cleanup(&cv->cv_lock);
 	// end add stuff //
 
         kfree(cv->cv_name);
         kfree(cv);
+
+	//turn interrupts back on
+	splx(spl);   
 }
 ////////////////////////////////////////////////////////////
 void
 cv_wait(struct cv *cv, struct lock *lock){
         // begin add stuff //		
-		spinlock_acquire(lock->lk_lock);	// atomic
+		
+	//turn interrupts off	
+	int spl;
+	spl = splhigh();
+
+		spinlock_acquire(&cv->cv_lock);	// atomic
 			
-		while(lock->lk_holder != NULL)
-		{
+		//while(lock->lk_holder != NULL)
+		//{
 		    lock_release(lock);
-		    wchan_sleep(cv->cv_wchan, lock->lk_lock);	// maybe lock->lk_wchan
-		    lock_acquire(lock);
-		}
-		// end add stuff //
+		    //kprintf("waits sleep\n");
+		    wchan_sleep(cv->cv_wchan, &cv->cv_lock);	// maybe lock->lk_wchan
+		    
+		//}
+		spinlock_release(&cv->cv_lock);
+
+		lock_acquire(lock);
+
+	//turn interrupts back on
+	splx(spl);   	
+
+	// end add stuff //
     //    (void)cv;    // suppress warning until code gets written
     //    (void)lock;  // suppress warning until code gets written
 }
@@ -290,7 +342,9 @@ cv_signal(struct cv *cv, struct lock *lock){
 		
 		if(lock_do_i_hold(lock))
 		{
-		    wchan_wakeone(cv->cv_wchan, lock->lk_lock);
+		    spinlock_acquire(&cv->cv_lock);
+		    wchan_wakeone(cv->cv_wchan, &cv->cv_lock);
+		    spinlock_release(&cv->cv_lock);
 		}		
 			
 		
@@ -305,7 +359,9 @@ cv_broadcast(struct cv *cv, struct lock *lock){
 		// this one too
 		if(lock_do_i_hold(lock))
 		{
-		    wchan_wakeall(cv->cv_wchan, lock->lk_lock);
+		    spinlock_acquire(&cv->cv_lock);
+		    wchan_wakeall(cv->cv_wchan, &cv->cv_lock);
+		    spinlock_release(&cv->cv_lock);
 		}
 		// end add stuff //
 	//(void)cv;    // suppress warning until code gets written
