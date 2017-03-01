@@ -110,7 +110,9 @@ struct thread {
 	bool t_did_reserve_buffers;	/* reserve_buffers() in effect */
 
 	/* add more here as needed */
-	struct semaphore *sem_join;
+	struct semaphore *sem_child;
+	struct semaphore *sem_parent;
+	bool joining;
 };
 
 /*

@@ -152,7 +152,9 @@ thread_create(const char *name)
 
 	/* If you add to struct thread, be sure to initialize here */
 	//make a semaphore to hold our join status	
-	thread->sem_join = sem_create(name,0);
+	thread->sem_child = sem_create(name,0);
+	thread->sem_parent = sem_create(name,0);
+	thread->joining = false;
 
 	return thread;
 }
@@ -289,7 +291,8 @@ thread_destroy(struct thread *thread)
 	thread_machdep_cleanup(&thread->t_machdep);
 	
 	//clean the semaphore we created
-	sem_destroy(thread->sem_join);
+	sem_destroy(thread->sem_child);
+	sem_destroy(thread->sem_parent);
 
 	/* sheer paranoia */
 	thread->t_wchan_name = "DESTROYED";
@@ -613,9 +616,14 @@ thread_forking(const char *name,
 	/* Lock the current cpu's run queue and make the new thread runnable */
 	thread_make_runnable(newthread, false);
 
+	//set bool to true to tell exit this thread will be joined	
+	newthread->joining = true;	
+
 	//put a pointer to the new thread into the passed in parameter 
 	//in order to save it in the parent
 	*t = newthread;	
+
+
 	return 0;
 }
 
@@ -623,12 +631,17 @@ int
 thread_join(struct thread *thread){
 
 		KASSERT(curthread != NULL);
-		//KASSERT(thread != NULL);
+		KASSERT(thread != NULL);
 		KASSERT(thread != curthread);
-		//KASSERT(thread->sem_join != NULL);
+		KASSERT(thread->sem_child != NULL);
+		KASSERT(thread->sem_parent != NULL);
 		
-		
-		P(thread->sem_join);
+		//wait for child to exit
+		P(thread->sem_child);
+
+		//when child exits it waits on parent confirmation
+		//tell child to continue exiting
+		V(thread->sem_parent);
 
 }
 
@@ -867,11 +880,21 @@ thread_exit(void)
 
 	cur = curthread;
 
-	V(curthread->sem_join);
-
 	
 
 	KASSERT(cur->t_did_reserve_buffers == false);
+
+	//check if the thread that is exiting is also joining
+	if(curthread->joining)
+	{
+		//tell parent i am exiting
+		V(curthread->sem_child);
+
+		//wait on parent confirmation
+		P(curthread->sem_parent);
+
+		
+	}
 
 	/*
 	 * Detach from our process. You might need to move this action
