@@ -194,7 +194,7 @@ lock_release(struct lock *lock){
 			KASSERT(!curthread->t_in_interrupt);
 			spinlock_acquire(lock->lk_lock);
 			
-			if(lock_do_i_hold(lock)
+			if(lock_do_i_hold(lock))
 			{
 			    lock->lk_holder = NULL;
 			    wchan_wakeone(lock->lk_wchan, lock->lk_lock);

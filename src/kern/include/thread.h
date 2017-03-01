@@ -156,6 +156,9 @@ int thread_forking(const char *name,
 	    void (*entrypoint)(void *data1, unsigned long data2),
 	    void *data1, unsigned long data2, struct thread **t);
 
+
+int thread_join(struct thread *thread);
+
 /*
  * Cause the current thread to exit.
  * Interrupts need not be disabled.

@@ -643,6 +643,8 @@ thread_join(struct thread *thread){
 		//tell child to continue exiting
 		V(thread->sem_parent);
 
+		return 0;
+
 }
 
 /*
