@@ -151,10 +151,6 @@ thread_create(const char *name)
 	thread->t_did_reserve_buffers = false;
 
 	/* If you add to struct thread, be sure to initialize here */
-	//make a semaphore to hold our join status	
-	thread->sem_child = sem_create(name,0);
-	thread->sem_parent = sem_create(name,0);
-	thread->joining = false;
 
 	return thread;
 }
@@ -289,10 +285,6 @@ thread_destroy(struct thread *thread)
 	}
 	threadlistnode_cleanup(&thread->t_listnode);
 	thread_machdep_cleanup(&thread->t_machdep);
-	
-	//clean the semaphore we created
-	sem_destroy(thread->sem_child);
-	sem_destroy(thread->sem_parent);
 
 	/* sheer paranoia */
 	thread->t_wchan_name = "DESTROYED";
@@ -561,92 +553,6 @@ thread_fork(const char *name,
 	return 0;
 }
 
-//fork with a thread* return to enable joining
-
-int
-thread_forking(const char *name,
-	    struct proc *proc,
-	    void (*entrypoint)(void *data1, unsigned long data2),
-	    void *data1, unsigned long data2, struct thread **t)
-{
-	struct thread *newthread;
-	int result;
-
-	newthread = thread_create(name);
-	if (newthread == NULL) {
-		return ENOMEM;
-	}
-
-	/* Allocate a stack */
-	newthread->t_stack = kmalloc(STACK_SIZE);
-	if (newthread->t_stack == NULL) {
-		thread_destroy(newthread);
-		return ENOMEM;
-	}
-	thread_checkstack_init(newthread);
-
-	/*
-	 * Now we clone various fields from the parent thread.
-	 */
-
-	/* Thread subsystem fields */
-	newthread->t_cpu = curthread->t_cpu;
-
-	/* Attach the new thread to its process */
-	if (proc == NULL) {
-		proc = curthread->t_proc;
-	}
-	result = proc_addthread(proc, newthread);
-	if (result) {
-		/* thread_destroy will clean up the stack */
-		thread_destroy(newthread);
-		return result;
-	}
-
-	/*
-	 * Because new threads come out holding the cpu runqueue lock
-	 * (see notes at bottom of thread_switch), we need to account
-	 * for the spllower() that will be done releasing it.
-	 */
-	newthread->t_iplhigh_count++;
-
-	/* Set up the switchframe so entrypoint() gets called */
-	switchframe_init(newthread, entrypoint, data1, data2);
-
-	/* Lock the current cpu's run queue and make the new thread runnable */
-	thread_make_runnable(newthread, false);
-
-	//set bool to true to tell exit this thread will be joined	
-	newthread->joining = true;	
-
-	//put a pointer to the new thread into the passed in parameter 
-	//in order to save it in the parent
-	*t = newthread;	
-
-
-	return 0;
-}
-
-int
-thread_join(struct thread *thread){
-
-		KASSERT(curthread != NULL);
-		KASSERT(thread != NULL);
-		KASSERT(thread != curthread);
-		KASSERT(thread->sem_child != NULL);
-		KASSERT(thread->sem_parent != NULL);
-		
-		//wait for child to exit
-		P(thread->sem_child);
-
-		//when child exits it waits on parent confirmation
-		//tell child to continue exiting
-		V(thread->sem_parent);
-
-		return 0;
-
-}
-
 /*
  * High level, machine-independent context switch code.
  *
@@ -882,21 +788,7 @@ thread_exit(void)
 
 	cur = curthread;
 
-	
-
 	KASSERT(cur->t_did_reserve_buffers == false);
-
-	//check if the thread that is exiting is also joining
-	if(curthread->joining)
-	{
-		//tell parent i am exiting
-		V(curthread->sem_child);
-
-		//wait on parent confirmation
-		P(curthread->sem_parent);
-
-		
-	}
 
 	/*
 	 * Detach from our process. You might need to move this action
@@ -915,8 +807,6 @@ thread_exit(void)
 	thread_switch(S_ZOMBIE, NULL, NULL);
 	panic("braaaaaaaiiiiiiiiiiinssssss\n");
 }
-
-
 
 /*
  * Yield the cpu to another process, but stay runnable.

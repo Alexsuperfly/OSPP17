@@ -35,9 +35,6 @@
  * functions.
  */
 
-//our test function
-int asst1_tests();
-
 
 /*
  * Test code.

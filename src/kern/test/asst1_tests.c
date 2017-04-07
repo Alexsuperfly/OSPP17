@@ -1,15 +1,16 @@
 //100% actual GARBAGE
 //if it doesnt compile which it will not
 //comment all of it out dawg
-
+/*
 #include <synch.h>
 #include <thread.h>
 #include <wchan.h>
 #include <spinlock.h>
 #include <lib.h>
+*/
 #include <test.h>
 
-
+/*
 static struct lock *mylock;
 static struct cv *mycv;
 static struct semaphore *sem, *sem2;
@@ -19,9 +20,9 @@ static struct semaphore *sem, *sem2;
 static unsigned long myval;
 
 ///////////////////////////////////////////////////////////////////////////////
-/*
+
 	thread_fork entrypoint - cv
-*/
+
 static int entrypoint(void *data1, unsigned long data2){
 	(void)data1;
 	lock_acquire(mylock);
@@ -34,9 +35,9 @@ static int entrypoint(void *data1, unsigned long data2){
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/*
+
 	CV tests
-*/
+
 
 // cv_create
 static void test_cv_create(){
@@ -157,9 +158,9 @@ static void test_cv_broadcast(){
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/*
+
 	Lock tests
-*/
+
 // lock_create
 static void test_lock_create(){
 	kprintf("begin test_lock_create\n");
@@ -172,9 +173,9 @@ static void test_lock_create(){
 	kprintf("begin test_lock_create\n");
 }
 
-/*
+
 	thread_fork entrypoint - lock
-*/
+
 static int entrypoint_lock(void *data1, unsigned long data2){
 	(void)data1;
 	lock_acquire(mylock);
@@ -209,9 +210,9 @@ static void test_lock_holder(){
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/*
+
 	thread_join tests
-*/
+
 
 
 static int threadstuff(void *data1, unsigned long data2){
@@ -233,12 +234,12 @@ static void test_thread_join(){
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/*
+
 	call me to run tests
 */
-int asst1_tests(){
+int asst1_tests(int nargs, char **args){
 	// cv
-	test_cv_create();
+	/*test_cv_create();
 	test_cv_wait();
 	test_cv_signal();
 	test_cv_broadcast();
@@ -249,6 +250,9 @@ int asst1_tests(){
 	
 	// thread_join
 	test_thread_join();
+	*/
+(void)nargs;
+(void)args;
 	
 	return 0;
 }

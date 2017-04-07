@@ -525,7 +525,6 @@ static const char *mainmenu[] = {
 	"[khgen] Next kernel heap generation ",
 	"[khdump] Dump kernel heap           ",
 	"[buf] Print buffer cache stats      ",
-	"[a1a] Run a1a tests		     ",
 #if OPT_SYNCHPROBS
     "[sp1] Elves                         ",
     "[sp2] Air Balloon                   ",
@@ -597,9 +596,6 @@ static struct {
 	{ "tt2",	threadtest2 },
 	{ "tt3",	threadtest3 },
 	{ "sy1",	semtest },
-	
-	//our test thing
-	{ "a1a",	asst1_tests },
 
 	/* synchronization assignment tests */
 	{ "sy2",	locktest },
