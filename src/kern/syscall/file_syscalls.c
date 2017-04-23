@@ -228,3 +228,16 @@ sys_close(int fd, int* retval)
 /* 
 * encrypt() - read and encrypt the data of a file
 */
+
+/*
+int
+sys_encrypt(const_userptr_t upath, int* retval)
+{
+	int fd = 0;
+	
+	result = sys_open(upath, O_RDWR);
+
+
+	sys_read(result)
+}
+*/
